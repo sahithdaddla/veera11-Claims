@@ -561,6 +561,19 @@
         grid-template-columns: 1fr;
       }
     }
+    .attachment-list {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
+    .attachment-list a {
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: 0.5rem;
+    }
+    .attachment-list a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -596,7 +609,7 @@
         <span id="category-title">All Claims</span>
         <div class="filter-controls">
           <select id="status-filter">
-            <option value="all">All Statuses</option>
+            <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
@@ -627,7 +640,7 @@
             required
             placeholder="Enter your response with single spaces between words"
           ></textarea>
-          <div class="hint">Only letters and single spaces between words allowed</div>
+          <div class="hint"></div>
         </div>
       </div>
       
@@ -667,6 +680,35 @@
     function formatDate(dateString) {
       const options = { year: 'numeric', month: 'short', day: 'numeric' };
       return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function getFileIcon(fileName) {
+      const extension = fileName.split('.').pop().toLowerCase();
+      const fileTypes = {
+        pdf: 'fa-file-pdf',
+        doc: 'fa-file-word',
+        docx: 'fa-file-word',
+        xls: 'fa-file-excel',
+        xlsx: 'fa-file-excel',
+        ppt: 'fa-file-powerpoint',
+        pptx: 'fa-file-powerpoint',
+        jpg: 'fa-file-image',
+        jpeg: 'fa-file-image',
+        png: 'fa-file-image',
+        gif: 'fa-file-image',
+        txt: 'fa-file-alt',
+        zip: 'fa-file-archive',
+        rar: 'fa-file-archive'
+      };
+      return fileTypes[extension] || 'fa-file';
     }
     
     function showNotification(message, isError = false) {
@@ -733,6 +775,29 @@
       }
     }
     
+    function renderAttachments(attachments) {
+      if (!attachments || attachments.length === 0) {
+        return '<p>No attachments</p>';
+      }
+      
+      return `
+        <div class="file-preview-container">
+          ${attachments.map(file => `
+            <div class="file-preview">
+              <i class="fas ${getFileIcon(file.name)}"></i>
+              <div class="file-info">
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">${formatFileSize(file.size)}</span>
+              </div>
+              <a href="${file.url}" target="_blank" download>
+                <i class="fas fa-download"></i>
+              </a>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
     document.addEventListener('DOMContentLoaded', () => {
       const hrClaimsGrid = document.getElementById('hr-claims-grid');
       const statusFilter = document.getElementById('status-filter');
@@ -754,7 +819,6 @@
       
       loadClaims();
       
-      // Event listeners for category tabs
       categoryTabs.forEach(tab => {
         tab.addEventListener('click', () => {
           categoryTabs.forEach(t => t.classList.remove('active'));
@@ -765,7 +829,6 @@
         });
       });
       
-      // Event listener for status filter
       statusFilter.addEventListener('change', () => {
         currentStatus = statusFilter.value;
         loadClaims();
@@ -774,17 +837,14 @@
       async function loadClaims() {
         let claims = await fetchClaims();
         
-        // Filter by category
         if (currentCategory !== 'all') {
           claims = claims.filter(claim => claim.category === currentCategory);
         }
         
-        // Filter by status
         if (currentStatus !== 'all') {
           claims = claims.filter(claim => claim.status === currentStatus);
         }
         
-        // Sort by date (newest first)
         claims.sort((a, b) => new Date(b.date) - new Date(a.date));
         
         hrClaimsGrid.innerHTML = '';
@@ -803,7 +863,6 @@
           const claimCard = document.createElement('div');
           claimCard.className = 'claim-card';
           
-          // Determine category class for styling
           const categoryClass = `category-${claim.category.toLowerCase().replace(' ', '-')}`;
           
           claimCard.innerHTML = `
@@ -814,6 +873,7 @@
             <p><strong>Employee:</strong> ${claim.employee_name} (${claim.employee_id})</p>
             <div class="claim-card-amount">${formatCurrency(claim.amount)}</div>
             <div class="claim-card-description">${claim.description.substring(0, 100)}${claim.description.length > 100 ? '...' : ''}</div>
+            <p><strong>Attachments:</strong> ${claim.attachments?.length || 0}</p>
             <span class="claim-card-status status-${claim.status}">${claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}</span>
             <span class="claim-card-category ${categoryClass}">${claim.category}</span>
             
@@ -835,7 +895,6 @@
           hrClaimsGrid.appendChild(claimCard);
         });
         
-        // Add event listeners to action buttons
         document.querySelectorAll('.respond-btn').forEach(btn => {
           btn.addEventListener('click', () => showRespondModal(parseInt(btn.dataset.id)));
         });
@@ -860,6 +919,8 @@
             <p><strong>Category:</strong> ${claim.category}</p>
             <h4>Description:</h4>
             <p>${claim.description}</p>
+            <h4>Attachments:</h4>
+            ${renderAttachments(claim.attachments)}
           </div>
         `;
         
@@ -919,6 +980,8 @@
             <p><strong>Status:</strong> <span class="claim-card-status status-${claim.status}">${claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}</span></p>
             <h4>Description:</h4>
             <p>${claim.description}</p>
+            <h4>Attachments:</h4>
+            ${renderAttachments(claim.attachments)}
             
             ${claim.status !== 'pending' ? `
               <div class="response-section">
@@ -993,4 +1056,5 @@
     });
   </script>
 </body>
+
 </html>
