@@ -1150,48 +1150,47 @@ function showNotification(message, isError = false) {
           return;
         }
 
-        // Prepare form data with files
-        const formData = new FormData();
-        formData.append('employeeId', employeeIdInput.value);
-        formData.append('employeeName', employeeNameInput.value);
-        formData.append('title', claimTitleInput.value);
-        formData.append('amount', parseFloat(amountValue));
-        formData.append('category', claimCategoryInput.value);
-        formData.append('description', claimDescriptionInput.value);
-        
-        // Add files to form data
-        const fileInput = document.getElementById('file-upload-input');
-        for (let i = 0; i < fileInput.files.length; i++) {
-          formData.append('attachments', fileInput.files[i]);
-        }
-
         try {
-          const response = await fetch(API_URL, {
-            method: 'POST',
-            body: formData
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to submit claim');
-          }
-          
- const newClaim = await response.json();
-  // Clear form only after successful submission
-  claimForm.reset();
-  document.querySelectorAll('.error-message').forEach(el => {
-    el.style.display = 'none';
-  });
-  document.getElementById('file-preview-container').innerHTML = '';
-  
-  // Show success notification
-  showNotification('Claim submitted successfully!');
-  
-} catch (err) {
-  showNotification(err.message, true);
-  console.error('Submission error:', err);
-}
-      });
+    const formData = new FormData();
+    formData.append('employeeId', employeeIdInput.value);
+    formData.append('employeeName', employeeNameInput.value);
+    formData.append('title', claimTitleInput.value);
+    formData.append('amount', parseFloat(amountValue));
+    formData.append('category', claimCategoryInput.value);
+    formData.append('description', claimDescriptionInput.value);
+    
+    // Append each file
+    const fileInput = document.getElementById('file-upload-input');
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append('attachments', fileInput.files[i]);
+    }
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData // Don't set Content-Type header - browser will set it with boundary
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to submit claim');
+    }
+
+    const newClaim = await response.json();
+    
+    // Clear form
+    claimForm.reset();
+    document.querySelectorAll('.error-message').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.getElementById('file-preview-container').innerHTML = '';
+    
+    showNotification('Claim submitted successfully!');
+    
+  } catch (err) {
+    showNotification(err.message, true);
+    console.error('Submission error:', err);
+  }
+});
       
       document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', () => {

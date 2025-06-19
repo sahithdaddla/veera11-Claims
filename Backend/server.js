@@ -171,7 +171,6 @@ app.get('/api/claims/employee/:employeeId', async (req, res) => {
 });
 
 // Add a new claim with file uploads
-// Add a new claim with file uploads
 app.post('/api/claims', upload.array('attachments'), async (req, res) => {
   const { employeeId, employeeName, title, amount, category, description } = req.body;
   
