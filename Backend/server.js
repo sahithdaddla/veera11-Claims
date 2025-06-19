@@ -171,12 +171,19 @@ app.get('/api/claims/employee/:employeeId', async (req, res) => {
 });
 
 // Add a new claim with file uploads
+// Add a new claim with file uploads
 app.post('/api/claims', upload.array('attachments'), async (req, res) => {
   const { employeeId, employeeName, title, amount, category, description } = req.body;
+  
+  // Validate required fields
+  if (!employeeId || !employeeName || !title || !amount || !category || !description) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
   const date = new Date().toISOString().split('T')[0];
 
   try {
-    // Check for existing claims for the same employee on the same day
+    // Check for existing claims
     const { rows: existing } = await pool.query(
       'SELECT * FROM claims WHERE employee_id = $1 AND date = $2',
       [employeeId, date]
@@ -190,10 +197,10 @@ app.post('/api/claims', upload.array('attachments'), async (req, res) => {
 
     // Insert claim
     const { rows } = await pool.query(
-      `INSERT INTO claims (employee_id, employee_name, title, date, amount, category, description, status, response)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', '')
+      `INSERT INTO claims (employee_id, employee_name, title, date, amount, category, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [employeeId, employeeName, title, date, amount, category, description]
+      [employeeId, employeeName, title, date, parseFloat(amount), category, description]
     );
 
     const claim = rows[0];
@@ -201,11 +208,11 @@ app.post('/api/claims', upload.array('attachments'), async (req, res) => {
     // Process file attachments
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-await pool.query(
-  `INSERT INTO claim_attachments (claim_id, file_name, file_path, file_size, mime_type)
-   VALUES ($1, $2, $3, $4, $5)`,
-  [claim.id, file.originalname, file.filename, file.size, file.mimetype]
-);
+        await pool.query(
+          `INSERT INTO claim_attachments (claim_id, file_name, file_path, file_size, mime_type)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [claim.id, file.originalname, file.filename, file.size, file.mimetype]
+        );
       }
     }
 
@@ -220,7 +227,7 @@ await pool.query(
 
     claim.attachments = attachments.map(att => ({
       name: att.file_name,
-      url: `http://localhost:3000/${att.file_path}`,
+      url: `http://localhost:3000/${path.basename(att.file_path)}`,
       size: att.file_size
     }));
 
@@ -229,7 +236,7 @@ await pool.query(
     // Rollback transaction on error
     await pool.query('ROLLBACK');
     console.error('Error in POST /api/claims:', err);
-    
+
     // Clean up uploaded files if any
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
@@ -238,8 +245,12 @@ await pool.query(
         }
       });
     }
-    
-    res.status(500).json({ error: 'Internal server error' });
+
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
@@ -268,3 +279,7 @@ app.listen(port, async () => {
   await initializeDatabase();
   console.log(`Server running on http://localhost:${port}`);
 });
+
+
+
+
