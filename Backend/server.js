@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-const port = 3000;
+const port = 3057;
 
 // Middleware
 app.use(cors());
@@ -35,9 +35,9 @@ const upload = multer({
 // PostgreSQL connection
 const pool = new Pool({
   user: 'postgres',
-  host: 'localhost',
+  host: 'postgres',
   database: 'claims_portal',
-  password: 'Veera@0134',
+  password: 'admin123',
   port: 5432,
 });
 
@@ -101,7 +101,7 @@ app.get('/api/claims', async (req, res) => {
 // When retrieving files, construct the URL properly
 claim.attachments = attachments.map(att => ({
   name: att.file_name,
-  url: `http://localhost:3000/uploads/${encodeURIComponent(att.file_path)}`,
+  url: `http://56.228.30.32:3057/uploads/${encodeURIComponent(att.file_path)}`,
   size: att.file_size
 }));
     }
@@ -130,7 +130,7 @@ app.get('/api/claims/:id', async (req, res) => {
     
     claim.attachments = attachments.map(att => ({
       name: att.file_name,
-      url: `http://localhost:3000/${att.file_path}`,
+      url: `http://56.228.30.32:3057/${att.file_path}`,
       size: att.file_size
     }));
     
@@ -158,7 +158,7 @@ app.get('/api/claims/employee/:employeeId', async (req, res) => {
       );
       claim.attachments = attachments.map(att => ({
         name: att.file_name,
-        url: `http://localhost:3000/${att.file_path}`,
+        url: `http://56.228.30.32:3057/${att.file_path}`,
         size: att.file_size
       }));
     }
@@ -226,7 +226,7 @@ app.post('/api/claims', upload.array('attachments'), async (req, res) => {
 
     claim.attachments = attachments.map(att => ({
       name: att.file_name,
-      url: `http://localhost:3000/${path.basename(att.file_path)}`,
+      url: `http://56.228.30.32:3057/${path.basename(att.file_path)}`,
       size: att.file_size
     }));
 
